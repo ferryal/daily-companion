@@ -44,30 +44,25 @@ export function ModelSelector({ onModelChange }: ModelSelectorProps) {
   const formatPrice = (price: number) => {
     return price < 1 ? `$${price}` : `$${price.toFixed(1)}`;
   };
+  console.log("selectedModel.name", selectedModel.name);
 
   return (
     <div className="relative">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-background/50 backdrop-blur-sm border border-border/50 hover:border-primary hover:bg-primary/5 transition-all duration-200 text-sm min-w-0"
+        className="flex items-center gap-2 px-2 py-1 rounded-lg bg-background/50 backdrop-blur-sm border border-border/50 hover:border-primary transition-all duration-200 text-xs min-w-0"
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
       >
-        <Brain className="h-4 w-4 text-primary flex-shrink-0" />
-        <div className="flex flex-col items-start min-w-0 overflow-hidden">
-          <span className="font-medium text-foreground truncate max-w-[120px] sm:max-w-[160px]">
-            {selectedModel.name}
-          </span>
-          <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[160px]">
-            {selectedModel.provider}
-          </span>
-        </div>
+        <span className="font-medium text-foreground truncate max-w-[180px]">
+          {selectedModel.name}
+        </span>
         <motion.div
           animate={{ rotate: isOpen ? 180 : 0 }}
           transition={{ duration: 0.2 }}
           className="flex-shrink-0"
         >
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChevronDown className="h-3 w-3 text-muted-foreground" />
         </motion.div>
       </motion.button>
 

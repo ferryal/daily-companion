@@ -5,10 +5,19 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   experimental: {
-    optimizePackageImports: ["framer-motion", "@react-spring/web"],
+    optimizePackageImports: [
+      "framer-motion",
+      "@react-spring/web",
+      "lucide-react",
+    ],
+    optimizeCss: true,
+    webVitalsAttribution: ["CLS", "LCP", "INP", "FCP", "TTFB"],
   },
   images: {
     formats: ["image/webp", "image/avif"],
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === "production",
   },
   env: {
     CUSTOM_KEY: "daily-companion",

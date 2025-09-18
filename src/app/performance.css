@@ -1,0 +1,59 @@
+/* Performance optimizations */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Improve animation performance */
+@media (prefers-reduced-motion: no-preference) {
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin {
+    animation-play-state: running;
+    will-change: transform;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* GPU acceleration for smooth scrolling */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  transform: translateZ(0);
+}
+
+/* Optimize input rendering */
+input,
+textarea {
+  contain: layout style;
+  will-change: contents;
+}
+
+/* Reduce layout thrashing */
+.chat-container {
+  contain: layout style paint;
+  transform: translateZ(0);
+}
+
+/* Force compositing for better performance */
+.message-bubble {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* Optimize particle animations */
+.particle {
+  will-change: transform;
+  contain: layout style;
+}

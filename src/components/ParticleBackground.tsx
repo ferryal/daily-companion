@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useSpring, animated } from "@react-spring/web";
 
 interface Particle {
@@ -63,25 +63,8 @@ export function ParticleBackground({
     setIsClient(true);
   }, []);
 
-  useEffect(() => {
-    if (!isClient || particles.length === 0) return;
-
-    const animateParticles = () => {
-      particles.forEach((particle) => {
-        particle.x += particle.vx;
-        particle.y += particle.vy;
-
-        // Wrap around edges
-        if (particle.x > 100) particle.x = 0;
-        if (particle.x < 0) particle.x = 100;
-        if (particle.y > 100) particle.y = 0;
-        if (particle.y < 0) particle.y = 100;
-      });
-    };
-
-    const interval = setInterval(animateParticles, 100);
-    return () => clearInterval(interval);
-  }, [particles, isClient]);
+  // Remove JavaScript animation loop to improve performance
+  // CSS animations will handle the movement
 
   if (intensity === 0 || !isClient) return null;
 
@@ -91,33 +74,25 @@ export function ParticleBackground({
       className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
     >
       {particles.map((particle) => (
-        <ParticleComponent key={particle.id} particle={particle} />
+        <div
+          key={particle.id}
+          className="absolute rounded-full animate-pulse"
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            width: `${particle.size}px`,
+            height: `${particle.size}px`,
+            backgroundColor: particle.color,
+            opacity: particle.opacity,
+            animationDelay: `${particle.id * 0.1}s`,
+            animationDuration: `${3 + Math.random() * 2}s`,
+          }}
+        />
       ))}
     </animated.div>
   );
 }
 
-function ParticleComponent({ particle }: { particle: Particle }) {
-  const spring = useSpring({
-    from: { x: particle.x, y: particle.y },
-    to: { x: particle.x, y: particle.y },
-    config: { tension: 280, friction: 60 },
-    loop: true,
-  });
+// Removed ParticleComponent - using CSS animations instead
 
-  return (
-    <animated.div
-      style={{
-        position: "absolute",
-        left: `${particle.x}%`,
-        top: `${particle.y}%`,
-        width: `${particle.size}px`,
-        height: `${particle.size}px`,
-        backgroundColor: particle.color,
-        borderRadius: "50%",
-        opacity: particle.opacity,
-        transform: spring.x.to((x) => `translate3d(${x * 0.1}px, 0, 0)`),
-      }}
-    />
-  );
-}
+export default ParticleBackground;
