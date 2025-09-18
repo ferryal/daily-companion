@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, memo, useMemo, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Command,
@@ -89,7 +89,7 @@ interface CommandMenuProps {
   onClose: () => void;
 }
 
-export function CommandMenu({
+export const CommandMenu = memo(function CommandMenu({
   isVisible,
   searchTerm,
   onSelectCommand,
@@ -97,26 +97,32 @@ export function CommandMenu({
 }: CommandMenuProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Filter commands based on search term
-  const filteredCommands = commands.filter(
-    (cmd) =>
-      cmd.command.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cmd.description.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Memoize filtered commands for performance
+  const filteredCommands = useMemo(() => {
+    if (!searchTerm) return commands;
+    const lowerTerm = searchTerm.toLowerCase();
+    return commands.filter(
+      (cmd) =>
+        cmd.command.toLowerCase().includes(lowerTerm) ||
+        cmd.description.toLowerCase().includes(lowerTerm)
+    );
+  }, [searchTerm]);
 
-  // Group commands by category
-  const groupedCommands = filteredCommands.reduce((groups, command) => {
-    const category = command.category;
-    if (!groups[category]) {
-      groups[category] = [];
-    }
-    groups[category].push(command);
-    return groups;
-  }, {} as Record<string, CommandOption[]>);
+  // Memoize grouped commands for performance
+  const groupedCommands = useMemo(() => {
+    return filteredCommands.reduce((groups, command) => {
+      const category = command.category;
+      if (!groups[category]) {
+        groups[category] = [];
+      }
+      groups[category].push(command);
+      return groups;
+    }, {} as Record<string, CommandOption[]>);
+  }, [filteredCommands]);
 
-  // Handle keyboard navigation
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+  // Memoize keyboard handler
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent) => {
       if (!isVisible) return;
 
       switch (e.key) {
@@ -143,11 +149,17 @@ export function CommandMenu({
           onClose();
           break;
       }
-    };
+    },
+    [isVisible, selectedIndex, filteredCommands, onSelectCommand, onClose]
+  );
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    if (!isVisible) return;
 
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [isVisible, selectedIndex, filteredCommands, onSelectCommand, onClose]);
+  }, [isVisible, handleKeyDown]);
 
   // Reset selected index when search changes
   useEffect(() => {
@@ -235,4 +247,6 @@ export function CommandMenu({
       </motion.div>
     </AnimatePresence>
   );
-}
+});
+
+export default CommandMenu;
