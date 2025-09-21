@@ -3,17 +3,6 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSpring, animated } from "@react-spring/web";
 
-interface Particle {
-  id: number;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  size: number;
-  opacity: number;
-  color: string;
-}
-
 interface ParticleBackgroundProps {
   mood?: "calm" | "energetic" | "focused" | "celebratory";
   intensity?: number;

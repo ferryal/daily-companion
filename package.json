@@ -30,7 +30,8 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.3.1",
     "use-sound": "^5.0.0",
-    "web-vitals": "^5.1.0"
+    "web-vitals": "^5.1.0",
+    "critters": "^0.0.24"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

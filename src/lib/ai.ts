@@ -115,12 +115,13 @@ class AIService {
   private onApiKeyError?: (error: ApiKeyError) => void;
 
   constructor() {
-    this.loadApiKey();
+    this.loadApiKey().catch(console.error);
 
     // Listen for API key updates
     if (typeof window !== "undefined") {
-      window.addEventListener("apiKeyUpdated", (event: any) => {
-        this.apiKey = event.detail;
+      window.addEventListener("apiKeyUpdated", (event: Event) => {
+        const customEvent = event as CustomEvent;
+        this.apiKey = customEvent.detail;
       });
 
       window.addEventListener("apiKeyCleared", () => {
@@ -129,9 +130,9 @@ class AIService {
     }
   }
 
-  private loadApiKey() {
+  private async loadApiKey() {
     if (typeof window !== "undefined") {
-      const { getApiKey } = require("./storage");
+      const { getApiKey } = await import("./storage");
       const storedKey = getApiKey();
       // Only use stored key if it exists and is different from default
       this.apiKey =
@@ -147,10 +148,10 @@ class AIService {
     this.onApiKeyError = handler;
   }
 
-  updateApiKey(newApiKey: string) {
+  async updateApiKey(newApiKey: string) {
     this.apiKey = newApiKey;
     if (typeof window !== "undefined") {
-      const { saveApiKey } = require("./storage");
+      const { saveApiKey } = await import("./storage");
       saveApiKey(newApiKey);
     }
   }
@@ -159,15 +160,19 @@ class AIService {
     return this.apiKey;
   }
 
-  clearApiKey() {
+  async clearApiKey() {
     this.apiKey = this.defaultApiKey;
     if (typeof window !== "undefined") {
-      const { clearApiKey } = require("./storage");
+      const { clearApiKey } = await import("./storage");
       clearApiKey();
     }
   }
 
-  private isApiKeyLimitError(error: any): boolean {
+  private isApiKeyLimitError(error: {
+    message?: string;
+    status?: number;
+    code?: number;
+  }): boolean {
     // Check for various API key limit error patterns
     const errorMessage = error?.message?.toLowerCase() || "";
     const statusCode = error?.status || error?.code;
@@ -283,7 +288,11 @@ class AIService {
       console.error("AI API Error:", error);
 
       // Check if this is an API key error before falling back
-      if (this.isApiKeyLimitError(error)) {
+      if (
+        this.isApiKeyLimitError(
+          error as { message?: string; status?: number; code?: number }
+        )
+      ) {
         // Check if user has already been prompted
         const { hasBeenPromptedForApiKey } = await import("./storage");
         const hasBeenPrompted = hasBeenPromptedForApiKey();
@@ -291,7 +300,9 @@ class AIService {
         if (!hasBeenPrompted && this.onApiKeyError) {
           const apiKeyError: ApiKeyError = {
             isApiKeyError: true,
-            message: (error as any)?.message || "API key limit reached",
+            message:
+              (error as { message?: string })?.message ||
+              "API key limit reached",
           };
           this.onApiKeyError(apiKeyError);
         }
@@ -384,7 +395,6 @@ Keep responses engaging and conversational while staying focused on personal gro
         }
       } else {
         // Check if this is an API key error for quick replies too
-        const errorData = await response.json().catch(() => null);
         if (response.status === 401 || response.status === 403) {
           // Silently fall back to default replies for quick reply errors
           return this.getFallbackQuickReplies(aiResponse);
@@ -423,7 +433,7 @@ Keep responses engaging and conversational while staying focused on personal gro
   private async getMockResponse(userMessage: string): Promise<AIResponse> {
     // Dynamic import for mock responses
     const { getMockResponse, getMockQuickReplies } = await import("./mock");
-    const content = getMockResponse(userMessage);
+    const content = await getMockResponse(userMessage);
     const quickReplies = getMockQuickReplies(content);
     return { content, quickReplies };
   }
