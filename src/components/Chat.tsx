@@ -22,12 +22,13 @@ const ParticleBackground = lazy(
   () => import("@/components/ParticleBackground")
 );
 const CommandMenu = lazy(() => import("@/components/CommandMenu"));
+const ApiKeyModal = lazy(() => import("@/components/ApiKeyModal"));
 import {
   Message,
   QuickReply as QuickReplyType,
   Achievement,
 } from "@/lib/types";
-import { aiService } from "@/lib/ai";
+import { aiService, ApiKeyError } from "@/lib/ai";
 import { ModelSelector } from "@/components/ModelSelector";
 import {
   getMessages,
@@ -35,6 +36,8 @@ import {
   updateStreak,
   addXP,
   getUserStats,
+  saveApiKey,
+  setApiKeyPrompted,
 } from "@/lib/storage";
 import { checkForNewAchievements } from "@/lib/achievements";
 import {
@@ -58,6 +61,7 @@ export function Chat() {
   >("calm");
   const [particleIntensity, setParticleIntensity] = useState(0.3);
   const [showCommandMenu, setShowCommandMenu] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,10 +69,17 @@ export function Chat() {
   const sounds = useChatSounds();
   const haptics = useHaptics();
 
-  // Load messages on mount
+  // Load messages on mount and setup API key error handler
   useEffect(() => {
     const loadedMessages = getMessages();
     setMessages(loadedMessages);
+
+    // Setup API key error handler
+    aiService.setApiKeyErrorHandler((error: ApiKeyError) => {
+      if (error.isApiKeyError) {
+        setShowApiKeyModal(true);
+      }
+    });
 
     // Show welcome message if no messages
     if (loadedMessages.length === 0) {
@@ -86,6 +97,18 @@ export function Chat() {
         generateQuickReplies();
       }
     }
+
+    // Add event listener for testing modal
+    const handleTestModal = () => {
+      setShowApiKeyModal(true);
+    };
+
+    window.addEventListener("triggerApiKeyModal", handleTestModal);
+
+    // Cleanup event listener
+    return () => {
+      window.removeEventListener("triggerApiKeyModal", handleTestModal);
+    };
   }, []);
 
   // Auto scroll to bottom when new messages arrive with optimized scrolling
@@ -321,6 +344,36 @@ export function Chat() {
     [messages, sounds, haptics]
   );
 
+  const handleSaveApiKey = useCallback((newApiKey: string) => {
+    try {
+      aiService.updateApiKey(newApiKey);
+      saveApiKey(newApiKey);
+      setApiKeyPrompted(); // Mark as prompted so modal won't show again
+
+      // Show success notification
+      if (typeof window !== "undefined" && window.navigator?.vibrate) {
+        window.navigator.vibrate(100);
+      }
+
+      // Optionally retry the last message or show a success message
+      const successMessage = addMessage({
+        content:
+          "✅ API key updated successfully! You can now continue chatting.",
+        role: "assistant",
+      });
+      setMessages((prev) => [...prev, successMessage]);
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      // You could show an error toast here
+    }
+  }, []);
+
+  const handleSkipApiKey = useCallback(() => {
+    // User chose to skip, mark as prompted so modal won't show again
+    setApiKeyPrompted();
+    // The next user message will automatically use mock responses
+  }, []);
+
   return (
     <div className="flex flex-col h-full bg-gradient-to-br from-background via-background to-muted/20 relative">
       {/* Particle Background */}
@@ -442,6 +495,16 @@ export function Chat() {
         <AchievementModal
           achievement={currentAchievement}
           onClose={() => setCurrentAchievement(null)}
+        />
+      </Suspense>
+
+      {/* API Key Modal */}
+      <Suspense fallback={null}>
+        <ApiKeyModal
+          isOpen={showApiKeyModal}
+          onClose={() => setShowApiKeyModal(false)}
+          onSaveApiKey={handleSaveApiKey}
+          onSkip={handleSkipApiKey}
         />
       </Suspense>
     </div>

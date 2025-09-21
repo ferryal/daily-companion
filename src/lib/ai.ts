@@ -9,6 +9,13 @@ export interface AIResponse {
   content: string;
   quickReplies?: string[];
   error?: string;
+  requiresApiKey?: boolean;
+}
+
+export interface ApiKeyError {
+  isApiKeyError: boolean;
+  message: string;
+  code?: number;
 }
 
 export interface LLMModel {
@@ -100,14 +107,81 @@ export const AVAILABLE_MODELS: LLMModel[] = [
 ];
 
 class AIService {
-  private apiKey: string;
+  private apiKey: string | null = null;
   private baseUrl = "https://openrouter.ai/api/v1";
   private currentModel: string = "anthropic/claude-3-haiku";
+  private defaultApiKey =
+    "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";
+  private onApiKeyError?: (error: ApiKeyError) => void;
 
   constructor() {
-    // Use the API key provided by user
-    this.apiKey =
-      "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";
+    this.loadApiKey();
+
+    // Listen for API key updates
+    if (typeof window !== "undefined") {
+      window.addEventListener("apiKeyUpdated", (event: any) => {
+        this.apiKey = event.detail;
+      });
+
+      window.addEventListener("apiKeyCleared", () => {
+        this.apiKey = this.defaultApiKey;
+      });
+    }
+  }
+
+  private loadApiKey() {
+    if (typeof window !== "undefined") {
+      const { getApiKey } = require("./storage");
+      const storedKey = getApiKey();
+      // Only use stored key if it exists and is different from default
+      this.apiKey =
+        storedKey && storedKey !== this.defaultApiKey
+          ? storedKey
+          : this.defaultApiKey;
+    } else {
+      this.apiKey = this.defaultApiKey;
+    }
+  }
+
+  setApiKeyErrorHandler(handler: (error: ApiKeyError) => void) {
+    this.onApiKeyError = handler;
+  }
+
+  updateApiKey(newApiKey: string) {
+    this.apiKey = newApiKey;
+    if (typeof window !== "undefined") {
+      const { saveApiKey } = require("./storage");
+      saveApiKey(newApiKey);
+    }
+  }
+
+  getCurrentApiKey(): string | null {
+    return this.apiKey;
+  }
+
+  clearApiKey() {
+    this.apiKey = this.defaultApiKey;
+    if (typeof window !== "undefined") {
+      const { clearApiKey } = require("./storage");
+      clearApiKey();
+    }
+  }
+
+  private isApiKeyLimitError(error: any): boolean {
+    // Check for various API key limit error patterns
+    const errorMessage = error?.message?.toLowerCase() || "";
+    const statusCode = error?.status || error?.code;
+
+    return (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      errorMessage.includes("user not found") ||
+      errorMessage.includes("api key") ||
+      errorMessage.includes("unauthorized") ||
+      errorMessage.includes("forbidden") ||
+      errorMessage.includes("limit") ||
+      errorMessage.includes("quota")
+    );
   }
 
   setModel(modelId: string) {
@@ -129,6 +203,11 @@ class AIService {
   }
 
   async sendMessage(messages: AIMessage[]): Promise<AIResponse> {
+    if (!this.apiKey) {
+      // Use mock response when no API key is available at all
+      return await this.getMockResponse(messages[messages.length - 1].content);
+    }
+
     try {
       const systemPrompt = this.buildSystemPrompt();
 
@@ -160,11 +239,33 @@ class AIService {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null);
-        throw new Error(
-          `API Error: ${response.status} - ${
-            errorData?.error?.message || "Unknown error"
-          }`
-        );
+        const error = {
+          status: response.status,
+          message: errorData?.error?.message || "Unknown error",
+          code: errorData?.error?.code,
+        };
+
+        // Check if this is an API key related error
+        if (this.isApiKeyLimitError(error)) {
+          // Check if user has already been prompted
+          const { hasBeenPromptedForApiKey } = await import("./storage");
+          const hasBeenPrompted = hasBeenPromptedForApiKey();
+
+          if (!hasBeenPrompted && this.onApiKeyError) {
+            const apiKeyError: ApiKeyError = {
+              isApiKeyError: true,
+              message: error.message,
+              code: error.status,
+            };
+            this.onApiKeyError(apiKeyError);
+          }
+
+          return await this.getMockResponse(
+            messages[messages.length - 1].content
+          );
+        }
+
+        throw new Error(`API Error: ${response.status} - ${error.message}`);
       }
 
       const data = await response.json();
@@ -180,7 +281,27 @@ class AIService {
       };
     } catch (error) {
       console.error("AI API Error:", error);
-      // Fallback to mock response on error
+
+      // Check if this is an API key error before falling back
+      if (this.isApiKeyLimitError(error)) {
+        // Check if user has already been prompted
+        const { hasBeenPromptedForApiKey } = await import("./storage");
+        const hasBeenPrompted = hasBeenPromptedForApiKey();
+
+        if (!hasBeenPrompted && this.onApiKeyError) {
+          const apiKeyError: ApiKeyError = {
+            isApiKeyError: true,
+            message: (error as any)?.message || "API key limit reached",
+          };
+          this.onApiKeyError(apiKeyError);
+        }
+
+        return await this.getMockResponse(
+          messages[messages.length - 1].content
+        );
+      }
+
+      // Fallback to mock response on other errors
       return await this.getMockResponse(messages[messages.length - 1].content);
     }
   }
@@ -205,6 +326,10 @@ Keep responses engaging and conversational while staying focused on personal gro
   }
 
   async generateQuickReplies(aiResponse: string): Promise<string[]> {
+    if (!this.apiKey) {
+      return this.getFallbackQuickReplies(aiResponse);
+    }
+
     try {
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: "POST",
@@ -257,6 +382,13 @@ Keep responses engaging and conversational while staying focused on personal gro
         } catch {
           console.log("Failed to parse quick replies JSON");
         }
+      } else {
+        // Check if this is an API key error for quick replies too
+        const errorData = await response.json().catch(() => null);
+        if (response.status === 401 || response.status === 403) {
+          // Silently fall back to default replies for quick reply errors
+          return this.getFallbackQuickReplies(aiResponse);
+        }
       }
     } catch (error) {
       console.error("Quick replies generation error:", error);
@@ -290,8 +422,10 @@ Keep responses engaging and conversational while staying focused on personal gro
 
   private async getMockResponse(userMessage: string): Promise<AIResponse> {
     // Dynamic import for mock responses
-    const { getMockResponse } = await import("./mock");
-    return { content: getMockResponse(userMessage) };
+    const { getMockResponse, getMockQuickReplies } = await import("./mock");
+    const content = getMockResponse(userMessage);
+    const quickReplies = getMockQuickReplies(content);
+    return { content, quickReplies };
   }
 }
 

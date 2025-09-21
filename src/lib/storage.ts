@@ -5,6 +5,8 @@ const STORAGE_KEYS = {
   MESSAGES: "daily-companion-messages",
   USER_STATS: "daily-companion-stats",
   DAILY_CHALLENGE: "daily-companion-challenge",
+  API_KEY: "daily-companion-api-key",
+  API_KEY_PROMPTED: "daily-companion-api-key-prompted",
 };
 
 // Default user stats
@@ -249,4 +251,72 @@ function generateDailyChallenge(): DailyChallenge {
     JSON.stringify(dailyChallenge)
   );
   return dailyChallenge;
+}
+
+// API Key management
+export function getApiKey(): string | null {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return localStorage.getItem(STORAGE_KEYS.API_KEY);
+  } catch (error) {
+    console.error("Error loading API key:", error);
+    return null;
+  }
+}
+
+export function saveApiKey(apiKey: string): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+    // Dispatch custom event to notify components of API key update
+    window.dispatchEvent(new CustomEvent("apiKeyUpdated", { detail: apiKey }));
+  } catch (error) {
+    console.error("Error saving API key:", error);
+  }
+}
+
+export function clearApiKey(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(STORAGE_KEYS.API_KEY);
+    // Dispatch custom event to notify components of API key removal
+    window.dispatchEvent(new CustomEvent("apiKeyCleared"));
+  } catch (error) {
+    console.error("Error clearing API key:", error);
+  }
+}
+
+// API Key prompt tracking
+export function hasBeenPromptedForApiKey(): boolean {
+  if (typeof window === "undefined") return false;
+
+  try {
+    return localStorage.getItem(STORAGE_KEYS.API_KEY_PROMPTED) === "true";
+  } catch (error) {
+    console.error("Error checking API key prompt status:", error);
+    return false;
+  }
+}
+
+export function setApiKeyPrompted(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(STORAGE_KEYS.API_KEY_PROMPTED, "true");
+  } catch (error) {
+    console.error("Error setting API key prompted flag:", error);
+  }
+}
+
+export function clearApiKeyPrompted(): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.removeItem(STORAGE_KEYS.API_KEY_PROMPTED);
+  } catch (error) {
+    console.error("Error clearing API key prompted flag:", error);
+  }
 }

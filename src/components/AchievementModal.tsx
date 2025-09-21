@@ -174,3 +174,5 @@ export function AchievementModal({
     </>
   );
 }
+
+export default AchievementModal;
