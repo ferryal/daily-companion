@@ -8,7 +8,6 @@ import {
   Bot,
   User,
   Copy,
-  Heart,
   Share,
   Volume2,
   ThumbsUp,

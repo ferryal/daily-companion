@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
       "@react-spring/web",
       "lucide-react",
     ],
-    optimizeCss: true,
+    // optimizeCss: true, // Temporarily disabled due to critters dependency issue
     webVitalsAttribution: ["CLS", "LCP", "INP", "FCP", "TTFB"],
   },
   images: {

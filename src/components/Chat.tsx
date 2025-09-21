@@ -51,7 +51,6 @@ import { cn } from "@/lib/utils";
 export function Chat() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [debouncedInputValue, setDebouncedInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [quickReplies, setQuickReplies] = useState<QuickReplyType[]>([]);
   const [currentAchievement, setCurrentAchievement] =
@@ -124,14 +123,6 @@ export function Chat() {
       });
     }
   }, [messages]);
-
-  // Debounce input value for performance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedInputValue(inputValue);
-    }, 100);
-    return () => clearTimeout(timer);
-  }, [inputValue]);
 
   // Debounced command menu visibility with useMemo for performance
   const shouldShowMenu = useMemo(
@@ -276,15 +267,7 @@ export function Chat() {
         setIsLoading(false);
       }
     },
-    [
-      messages,
-      inputValue,
-      isLoading,
-      sounds,
-      haptics,
-      particleMood,
-      particleIntensity,
-    ]
+    [messages, inputValue, isLoading, sounds, haptics]
   );
 
   const handleKeyPress = useCallback(

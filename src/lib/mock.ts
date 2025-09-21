@@ -109,12 +109,12 @@ export const mockResponses = {
   ],
 };
 
-export function getMockResponse(userMessage: string): string {
+export async function getMockResponse(userMessage: string): Promise<string> {
   const message = userMessage.toLowerCase();
 
   // Handle slash commands
   if (message.startsWith("/")) {
-    return handleSlashCommand(message);
+    return await handleSlashCommand(message);
   }
 
   // Greeting patterns
@@ -199,7 +199,7 @@ export function getMockResponse(userMessage: string): string {
   return getRandomResponse(mockResponses.default);
 }
 
-function handleSlashCommand(command: string): string {
+async function handleSlashCommand(command: string): Promise<string> {
   const cmd = command.split(" ")[0];
 
   switch (cmd) {
@@ -270,7 +270,7 @@ function handleSlashCommand(command: string): string {
       // This will trigger an API key error to test the modal
       if (typeof window !== "undefined") {
         // Reset the prompted flag for testing
-        const { clearApiKeyPrompted } = require("./storage");
+        const { clearApiKeyPrompted } = await import("./storage");
         clearApiKeyPrompted();
         // Trigger the modal by simulating an API key error
         window.dispatchEvent(new CustomEvent("triggerApiKeyModal"));

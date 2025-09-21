@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Zap, Brain, Clock, DollarSign } from "lucide-react";
+import { ChevronDown, Zap, Clock, DollarSign } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { aiService, AVAILABLE_MODELS, type LLMModel } from "@/lib/ai";
 import { cn } from "@/lib/utils";

@@ -8,7 +8,12 @@ export function WebVitalsReporter() {
       // Only load web-vitals in development for debugging (optional package)
       import("web-vitals")
         .then((webVitals) => {
-          const reportWebVital = (metric: any) => {
+          const reportWebVital = (metric: {
+            name: string;
+            value: number;
+            rating: string;
+            entries?: unknown[];
+          }) => {
             console.log(
               `[WebVitals] ${metric.name}:`,
               metric.value,
